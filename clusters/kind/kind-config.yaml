@@ -1,0 +1,9 @@
+# Two workers so scheduling, HPA scale-out and node-level metrics are
+# more interesting than a single-node cluster would make them.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: obs-lab
+nodes:
+  - role: control-plane
+  - role: worker
+  - role: worker
