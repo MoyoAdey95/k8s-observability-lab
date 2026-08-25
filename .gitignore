@@ -1,0 +1,14 @@
+# python
+__pycache__/
+*.pyc
+.venv/
+
+# terraform (.terraform.lock.hcl is committed on purpose)
+.terraform/
+*.tfstate
+*.tfstate.backup
+terraform.tfvars
+
+# local
+.DS_Store
+kubeconfig*
