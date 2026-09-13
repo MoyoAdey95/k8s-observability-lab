@@ -1,0 +1,39 @@
+# Values for the kube-prometheus-stack chart, release name "kps".
+# Everything not set here is a chart default on purpose. Each override
+# below exists for a reason I can state, defaults need no defence.
+
+prometheus:
+  prometheusSpec:
+    # Lab retention. The cluster lives for hours, not weeks.
+    retention: 24h
+    resources:
+      requests:
+        cpu: 100m
+        memory: 512Mi
+      limits:
+        memory: 1Gi
+    # By default the chart only picks up ServiceMonitors and rules that
+    # carry its own release label. These three turn that off so the
+    # app's ServiceMonitor and PrometheusRule in the app namespace are
+    # discovered without label gymnastics.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+
+alertmanager:
+  # Alertmanager runs so firing alerts are visible end to end, but no
+  # receivers are configured. Routing to a real channel is a production
+  # delta, documented in docs/production-deltas.md.
+  enabled: true
+
+grafana:
+  # Lab credential. Grafana sits behind port-forward only, it is never
+  # exposed on a LoadBalancer or Ingress in this lab.
+  adminPassword: admin
+  sidecar:
+    dashboards:
+      # picks up any ConfigMap labelled grafana_dashboard=1 in any
+      # namespace, which is how observability/dashboards/ gets loaded
+      enabled: true
+      label: grafana_dashboard
+      searchNamespace: ALL
