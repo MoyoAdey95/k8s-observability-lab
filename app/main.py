@@ -1,8 +1,8 @@
 """Demo service for the observability lab.
 
-A small FastAPI app that is deliberately easy to observe. This first
-version exposes Prometheus metrics and endpoints that simulate work
-and failure. Structured logging and tracing come later in the build.
+A small FastAPI app that is deliberately easy to observe. It exposes
+Prometheus metrics and endpoints that simulate work and failure.
+Structured logging and tracing come later in the build.
 """
 
 import logging
@@ -11,12 +11,45 @@ import random
 import time
 
 from fastapi import FastAPI, Response
-from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+from prometheus_client import (
+    CONTENT_TYPE_LATEST,
+    Counter,
+    Histogram,
+    generate_latest,
+)
+from starlette.requests import Request
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("demo-app")
 
 app = FastAPI(title="demo-app", docs_url=None, redoc_url=None)
+
+# Metric labels use the route template, not the raw path. Raw paths
+# would create a new label value per unique URL and blow up cardinality.
+REQUESTS = Counter(
+    "app_requests_total",
+    "HTTP requests handled, by route, method and status code.",
+    ["route", "method", "status"],
+)
+LATENCY = Histogram(
+    "app_request_duration_seconds",
+    "Request duration in seconds, by route and method.",
+    ["route", "method"],
+    buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5),
+)
+
+
+@app.middleware("http")
+async def measure(request: Request, call_next):
+    start = time.perf_counter()
+    response = await call_next(request)
+    route = request.scope.get("route")
+    template = route.path if route else "unmatched"
+    if template not in ("/metrics", "/health", "/ready"):
+        elapsed = time.perf_counter() - start
+        REQUESTS.labels(template, request.method, response.status_code).inc()
+        LATENCY.labels(template, request.method).observe(elapsed)
+    return response
 
 
 @app.get("/")
