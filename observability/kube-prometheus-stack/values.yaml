@@ -17,6 +17,15 @@ kubeEtcd:
 kubeProxy:
   enabled: false
 
+# node-exporter collects host-level metrics: disk, network, CPU of the
+# machine itself. Nothing in this lab reads them. It runs as a
+# DaemonSet, so on a three node cluster it is three more pods
+# competing for memory that the logging and tracing backends need.
+# Scoped out rather than switched off to save face, the repo is about
+# observing a workload.
+nodeExporter:
+  enabled: false
+
 prometheus:
   prometheusSpec:
     # Lab retention. The cluster lives for hours, not weeks.
