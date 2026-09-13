@@ -42,6 +42,17 @@ spec:
             initialDelaySeconds: 3
             periodSeconds: 5
             failureThreshold: 2
+          # Requests are what the scheduler and the HPA reason about,
+          # limits are the ceiling. Memory limit equals request so the
+          # pod is never running on memory it might not get. CPU limit
+          # is left higher than request to allow short bursts.
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
