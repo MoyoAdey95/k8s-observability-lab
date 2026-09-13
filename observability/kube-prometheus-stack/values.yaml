@@ -2,6 +2,21 @@
 # Everything not set here is a chart default on purpose. Each override
 # below exists for a reason I can state, defaults need no defence.
 
+# The chart ships scrape jobs for the control-plane components. kind
+# runs them bound to 127.0.0.1 inside the control-plane container, so
+# nothing on the pod network can reach them, and on GKE they are
+# managed by Google and not exposed at all. Both targets of this lab
+# therefore report them permanently down. This lab observes an
+# application rather than a control plane, so the jobs are off.
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeEtcd:
+  enabled: false
+kubeProxy:
+  enabled: false
+
 prometheus:
   prometheusSpec:
     # Lab retention. The cluster lives for hours, not weeks.
