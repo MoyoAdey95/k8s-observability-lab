@@ -1,0 +1,17 @@
+# Values for the grafana/promtail chart, release name "promtail".
+# Promtail runs as a DaemonSet, tails every container's log file on
+# each node and pushes to Loki with pod labels attached. Grafana has
+# frozen Promtail feature development in favour of Alloy, it is used
+# here because its scope is exactly this one job and nothing else. The
+# swap is noted in docs/production-deltas.md.
+
+config:
+  clients:
+    - url: http://loki.monitoring.svc:3100/loki/api/v1/push
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    memory: 256Mi

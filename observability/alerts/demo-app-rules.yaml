@@ -1,0 +1,48 @@
+# Alert rules for the demo app, picked up by the Prometheus operator.
+# Three alerts, one per failure mode that this lab can actually
+# reproduce on demand: kill the deployment, hammer /flaky, break the
+# image tag. An alert that has never fired is a guess.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: demo-app-rules
+  namespace: app
+  labels:
+    app.kubernetes.io/name: demo-app
+spec:
+  groups:
+    - name: demo-app
+      rules:
+        - alert: DemoAppDown
+          # absent() covers the case where every target is gone and up{}
+          # returns nothing at all, which a plain == 0 comparison would
+          # silently miss
+          expr: absent(up{job="demo-app"}) or sum(up{job="demo-app"}) == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: demo-app has no healthy scrape targets
+            description: Prometheus has not scraped a single demo-app pod for 2 minutes.
+
+        - alert: DemoAppHighErrorRate
+          expr: >
+            sum(rate(app_requests_total{status=~"5.."}[5m]))
+            /
+            sum(rate(app_requests_total[5m])) > 0.05
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: demo-app 5xx ratio above 5%
+            description: More than 5% of requests over the last 5 minutes returned a 5xx.
+
+        - alert: DemoAppPodRestarting
+          expr: >
+            increase(kube_pod_container_status_restarts_total{namespace="app", container="demo-app"}[15m]) > 3
+          for: 0m
+          labels:
+            severity: warning
+          annotations:
+            summary: demo-app pod restarting repeatedly
+            description: A demo-app container restarted more than 3 times in 15 minutes.

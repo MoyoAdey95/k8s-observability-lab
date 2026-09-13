@@ -1,0 +1,62 @@
+# Values for the grafana/loki chart, release name "loki".
+# Single binary mode with filesystem storage. One process, one volume,
+# which is the right shape for a lab and the wrong shape for
+# production, see docs/production-deltas.md for what changes.
+
+deploymentMode: SingleBinary
+
+loki:
+  auth_enabled: false
+  commonConfig:
+    replication_factor: 1
+  storage:
+    type: filesystem
+  schemaConfig:
+    configs:
+      - from: "2026-01-01"
+        store: tsdb
+        object_store: filesystem
+        schema: v13
+        index:
+          prefix: index_
+          period: 24h
+  limits_config:
+    retention_period: 24h
+
+singleBinary:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+
+# the chart's default topology is the scalable read/write/backend
+# split, zero those out explicitly in single binary mode
+read:
+  replicas: 0
+write:
+  replicas: 0
+backend:
+  replicas: 0
+
+# The caches are the important ones to turn off. Left at their
+# defaults the chart asks for several gigabytes of memcached, which
+# this cluster does not have and this lab does not need.
+chunksCache:
+  enabled: false
+resultsCache:
+  enabled: false
+
+# the chart bundles MinIO for people who want object storage without
+# a cloud account. Storage here is the filesystem, so it stays off.
+minio:
+  enabled: false
+
+lokiCanary:
+  enabled: false
+test:
+  enabled: false
+gateway:
+  enabled: false

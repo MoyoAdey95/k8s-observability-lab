@@ -61,3 +61,9 @@ grafana:
       enabled: true
       label: grafana_dashboard
       searchNamespace: ALL
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      uid: loki
+      access: proxy
+      url: http://loki.monitoring.svc:3100
