@@ -67,6 +67,17 @@ grafana:
       uid: loki
       access: proxy
       url: http://loki.monitoring.svc:3100
+      jsonData:
+        derivedFields:
+          # Pulls trace_id out of the app's JSON log lines and renders
+          # it as a link into Tempo. The \s* matters, json.dumps puts a
+          # space after the colon. The doubled $$ escapes Grafana's own
+          # variable expansion in provisioning files, so what reaches
+          # the datasource is ${__value.raw}.
+          - name: trace_id
+            matcherRegex: '"trace_id":\s*"([a-f0-9]+)"'
+            datasourceUid: tempo
+            url: '$${__value.raw}'
     - name: Tempo
       type: tempo
       uid: tempo
@@ -74,3 +85,13 @@ grafana:
       # 3200 is Tempo's query API. The OTLP receivers the app pushes
       # to are separate ports on the same service, 4318 for HTTP.
       url: http://tempo.monitoring.svc:3200
+      jsonData:
+        # The reverse jump, from a span to the log lines carrying its
+        # trace id. The time shifts widen the log search window either
+        # side of the span, since clocks and batching mean the two do
+        # not line up to the millisecond.
+        tracesToLogsV2:
+          datasourceUid: loki
+          spanStartTimeShift: '-5m'
+          spanEndTimeShift: '5m'
+          filterByTraceID: true
