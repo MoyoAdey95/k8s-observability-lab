@@ -1,0 +1,18 @@
+# Tells the Prometheus operator to scrape the app. Selects the Service
+# by label and scrapes /metrics on its http port. Lives in the app
+# namespace next to the Service it points at.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: demo-app
+  namespace: app
+  labels:
+    app.kubernetes.io/name: demo-app
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: demo-app
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
