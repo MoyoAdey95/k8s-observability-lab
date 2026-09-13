@@ -23,6 +23,12 @@ spec:
           ports:
             - name: http
               containerPort: 8000
+          env:
+            # Overlays set OTEL_EXPORTER_OTLP_ENDPOINT, since where
+            # Tempo lives is an environment detail. The service name is
+            # a property of the app itself, so it belongs here.
+            - name: OTEL_SERVICE_NAME
+              value: demo-app
           # Liveness answers "is the process wedged", readiness answers
           # "should this pod receive traffic". Readiness gets a shorter
           # period so a bad pod leaves the Service endpoints quickly,

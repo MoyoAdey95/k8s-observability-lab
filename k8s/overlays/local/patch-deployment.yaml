@@ -8,3 +8,6 @@ spec:
       containers:
         - name: demo-app
           imagePullPolicy: Never
+          env:
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://tempo.monitoring.svc:4318

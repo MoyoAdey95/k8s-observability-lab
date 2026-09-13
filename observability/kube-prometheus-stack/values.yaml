@@ -67,3 +67,10 @@ grafana:
       uid: loki
       access: proxy
       url: http://loki.monitoring.svc:3100
+    - name: Tempo
+      type: tempo
+      uid: tempo
+      access: proxy
+      # 3200 is Tempo's query API. The OTLP receivers the app pushes
+      # to are separate ports on the same service, 4318 for HTTP.
+      url: http://tempo.monitoring.svc:3200

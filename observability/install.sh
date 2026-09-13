@@ -22,6 +22,10 @@ helm upgrade --install promtail grafana/promtail \
   --namespace monitoring \
   --values loki/promtail-values.yaml
 
+helm upgrade --install tempo grafana/tempo \
+  --namespace monitoring \
+  --values tempo/values.yaml
+
 kubectl apply -f kube-prometheus-stack/servicemonitor.yaml
 kubectl apply -f alerts/demo-app-rules.yaml
 kubectl apply -k dashboards

@@ -1,0 +1,25 @@
+# Values for the grafana/tempo chart, release name "tempo".
+# Monolithic Tempo with local storage. Receives OTLP from the app,
+# stores traces on a local volume, serves queries to Grafana.
+
+tempo:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+  # accept OTLP over both transports. The app exports over HTTP (4318),
+  # gRPC is enabled too because it costs nothing and other tools
+  # (otel CLI tools, collectors) default to it.
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+  retention: 24h
+
+persistence:
+  enabled: false

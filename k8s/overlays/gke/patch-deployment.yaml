@@ -5,6 +5,11 @@ metadata:
 spec:
   template:
     spec:
+      containers:
+        - name: demo-app
+          env:
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://tempo.monitoring.svc:4318
       # spot nodes can be reclaimed at any time, spreading replicas
       # across nodes keeps one reclaim from taking the whole service
       topologySpreadConstraints:
