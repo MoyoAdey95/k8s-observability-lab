@@ -1,8 +1,9 @@
 """Demo service for the observability lab.
 
 A small FastAPI app that is deliberately easy to observe. It exposes
-Prometheus metrics, writes structured JSON logs, and endpoints that
-simulate work and failure. Tracing comes later in the build.
+Prometheus metrics, writes structured JSON logs, and (when an OTLP
+endpoint is configured) emits OpenTelemetry traces. The same app runs
+on kind and on GKE, only the overlay changes.
 """
 
 import logging
@@ -20,11 +21,13 @@ from prometheus_client import (
 from starlette.requests import Request
 
 from .logging_setup import configure_logging
+from .tracing import configure_tracing, span
 
 configure_logging()
 log = logging.getLogger("demo-app")
 
 app = FastAPI(title="demo-app", docs_url=None, redoc_url=None)
+configure_tracing(app)
 
 # Metric labels use the route template, not the raw path. Raw paths
 # would create a new label value per unique URL and blow up cardinality.
@@ -61,9 +64,11 @@ def index():
 
 @app.get("/work")
 def work():
-    """Simulated work with variable latency."""
-    time.sleep(random.uniform(0.01, 0.05))
-    time.sleep(random.uniform(0.02, 0.2))
+    """Simulated work with an inner span, so traces have some shape."""
+    with span("lookup"):
+        time.sleep(random.uniform(0.01, 0.05))
+    with span("compute"):
+        time.sleep(random.uniform(0.02, 0.2))
     log.info("work done")
     return {"status": "done"}
 
