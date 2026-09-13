@@ -1,8 +1,8 @@
 """Demo service for the observability lab.
 
 A small FastAPI app that is deliberately easy to observe. It exposes
-Prometheus metrics and endpoints that simulate work and failure.
-Structured logging and tracing come later in the build.
+Prometheus metrics, writes structured JSON logs, and endpoints that
+simulate work and failure. Tracing comes later in the build.
 """
 
 import logging
@@ -19,7 +19,9 @@ from prometheus_client import (
 )
 from starlette.requests import Request
 
-logging.basicConfig(level=logging.INFO)
+from .logging_setup import configure_logging
+
+configure_logging()
 log = logging.getLogger("demo-app")
 
 app = FastAPI(title="demo-app", docs_url=None, redoc_url=None)
