@@ -1,0 +1,14 @@
+# Packages the dashboard JSON into a ConfigMap that Grafana's sidecar
+# picks up by the grafana_dashboard label. Apply with:
+#   kubectl apply -k observability/dashboards
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: monitoring
+configMapGenerator:
+  - name: demo-app-dashboard
+    files:
+      - demo-app-dashboard.json
+    options:
+      disableNameSuffixHash: true
+      labels:
+        grafana_dashboard: "1"
