@@ -32,35 +32,118 @@ app (FastAPI)  ──/metrics──▶  Prometheus ──▶ Alertmanager
 
 Prerequisites. Docker, kind, kubectl, helm, kustomize.
 
+Bring up the cluster, metrics-server and namespaces.
+
 ```bash
-# cluster + metrics-server + namespaces
 ./clusters/kind/bootstrap.sh
-
-# build the app image and load it into kind
-docker build -t demo-app:dev app/
-kind load docker-image demo-app:dev --name obs-lab
-
-# deploy the app
-kubectl apply -k k8s/overlays/local
-
-# install the observability stack
-./observability/install.sh
-
-# look at it
-kubectl -n monitoring port-forward svc/kps-grafana 3000:80
-# http://localhost:3000, admin/admin, dashboard "demo-app"
 ```
 
-Generate some traffic worth looking at:
+Build the app image and load it into kind. No registry involved, kind
+reads the image straight from the local Docker daemon.
+
+```bash
+docker build -t demo-app:dev app/
+kind load docker-image demo-app:dev --name obs-lab
+```
+
+Deploy the app, then the observability stack.
+
+```bash
+kubectl apply -k k8s/overlays/local
+./observability/install.sh
+```
+
+Open Grafana on http://localhost:3000, admin/admin, dashboard
+"demo-app".
+
+```bash
+kubectl -n monitoring port-forward svc/kps-grafana 3000:80
+```
+
+Generate some traffic worth looking at.
 
 ```bash
 kubectl -n app port-forward svc/demo-app 8080:80
+```
+
+```bash
 while true; do curl -s localhost:8080/work >/dev/null; curl -s localhost:8080/flaky >/dev/null; done
 ```
 
 `/work` produces traces with child spans and normal latency spread,
 `/flaky` fails around 30% of the time so the error panels and the
-error-rate alert have something real to show.
+error-rate alert have something real to show. Half the traffic hitting
+`/flaky` is what puts the dashboard error ratio near 15%.
+
+## Following one request through all three signals
+
+The point of running all three is that they answer different
+questions, and the repo is wired so you can walk between them.
+
+The dashboard shows p95 latency climbing. That tells you something is
+slow. In Grafana, open Explore, pick the Tempo datasource and run a
+TraceQL query for the slow ones.
+
+```
+{ duration > 200ms }
+```
+
+Open a trace and the child spans show where the time went. On the
+captured run a 163ms `/work` request split into 25ms of `lookup` and
+134ms of `compute`, which is the answer the histogram cannot give you.
+
+Going the other way, the app writes JSON logs with `trace_id` and
+`span_id` when a trace is active. Grafana's Loki datasource is
+configured with a derived field that turns that `trace_id` into a link
+straight to the trace, so a log line you found by searching becomes a
+trace with one click.
+
+## Run it on GKE
+
+Prerequisites. Terraform, gcloud, and the `gke-gcloud-auth-plugin`
+component, which kubectl needs to authenticate against GKE and which
+gcloud does not install by default.
+
+```bash
+gcloud components install gke-gcloud-auth-plugin
+```
+
+Provision the cluster. It is zonal with a spot node pool, sized to be
+cheap rather than resilient.
+
+```bash
+cd clusters/gke
+cp terraform.tfvars.example terraform.tfvars
+terraform init
+terraform apply
+```
+
+Point kubectl at it using the command Terraform prints as the
+`get_credentials` output.
+
+Build and push the image. The `--platform` flag is not optional on an
+arm64 machine. GKE's e2 nodes are amd64, and an image built without it
+starts and dies immediately with `exec format error`.
+
+```bash
+docker build --platform linux/amd64 -t <region>-docker.pkg.dev/<project>/<repo>/demo-app:v1 app/
+docker push <region>-docker.pkg.dev/<project>/<repo>/demo-app:v1
+```
+
+Set that image in `k8s/overlays/gke/kustomization.yaml`, then deploy
+exactly as locally.
+
+```bash
+kubectl apply -k k8s/overlays/gke
+./observability/install.sh
+```
+
+When you are done, and the same day.
+
+```bash
+cd clusters/gke
+terraform destroy
+```
 
 ## What's in here
 
@@ -79,6 +162,6 @@ comes up with the same panels and the same three alerts every time.
 ## Cost
 
 All iteration is local and free. The GKE phase uses a zonal cluster
-(management fee inside the GKE free-tier credit) with two e2-small
+(management fee inside the GKE free-tier credit) with two e2-medium
 spot nodes, which prices in cents per hour. `terraform destroy`
 runs the same day. The project carries a budget alert regardless.
