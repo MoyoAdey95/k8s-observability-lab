@@ -81,8 +81,8 @@ The point of running all three is that they answer different
 questions, and the repo is wired so you can walk between them.
 
 The dashboard shows p95 latency climbing. That tells you something is
-slow. In Grafana, open Explore, pick the Tempo datasource and run a
-TraceQL query for the slow ones.
+slow. In Grafana, open Explore, pick the Tempo datasource
+and run a TraceQL query for the slow ones.
 
 ```
 { duration > 200ms }
@@ -138,12 +138,31 @@ kubectl apply -k k8s/overlays/gke
 ./observability/install.sh
 ```
 
-When you are done, and the same day.
+### Teardown
+
+Order matters here. Deleting a GKE cluster does not delete the
+persistent disks its PVCs created, so Loki's disk survives
+`terraform destroy` and keeps billing quietly. Delete the PVCs while
+the cluster is still alive and the CSI driver releases the disks with
+them.
+
+```bash
+kubectl delete pvc --all -n monitoring
+```
 
 ```bash
 cd clusters/gke
 terraform destroy
 ```
+
+Then confirm nothing was left behind.
+
+```bash
+gcloud compute disks list
+```
+
+That should return nothing. Run all of this the same day you created
+the cluster.
 
 ## What's in here
 

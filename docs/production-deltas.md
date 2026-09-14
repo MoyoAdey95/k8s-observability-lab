@@ -14,6 +14,15 @@ volume in this lab. Production wants persistent volumes sized for the
 retention policy, and long retention usually means Thanos or Mimir
 rather than a bigger Prometheus disk.
 
+Reclaim behaviour is worth knowing wherever this runs. Deleting the
+GKE cluster left Loki's 10GB persistent disk behind, still billing,
+because the disk belongs to the project rather than the cluster and
+nothing cascaded the delete. The teardown in the README deletes the
+PVCs first for that reason. In production the same property is a
+feature. A cluster rebuild does not take the data with it, but it
+means disk lifecycle is something you own deliberately rather than
+something the cluster handles for you.
+
 ## Log shipping
 
 Promtail does the shipping. Grafana has frozen Promtail feature
