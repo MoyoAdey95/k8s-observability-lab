@@ -1,0 +1,25 @@
+NAME                                  STATUS   ROLES    AGE   VERSION               INTERNAL-IP   EXTERNAL-IP      OS-IMAGE                             KERNEL-VERSION   CONTAINER-RUNTIME
+gke-obs-lab-spot-pool-4aeb9d32-cp5h   Ready    <none>   10m   v1.35.7-gke.1222000   10.132.0.7    35.241.210.142   Container-Optimized OS from Google   6.12.94+         containerd://2.1.9
+gke-obs-lab-spot-pool-4aeb9d32-ztpr   Ready    <none>   19m   v1.35.7-gke.1222000   10.132.0.6    35.195.99.49     Container-Optimized OS from Google   6.12.94+         containerd://2.1.9
+
+NAME                            READY   STATUS    RESTARTS   AGE   IP           NODE                                  NOMINATED NODE   READINESS GATES
+pod/demo-app-6bb89dcdc5-gw9x7   1/1     Running   0          10m   10.76.1.23   gke-obs-lab-spot-pool-4aeb9d32-ztpr   <none>           <none>
+pod/demo-app-6bb89dcdc5-ll25c   1/1     Running   0          11m   10.76.1.22   gke-obs-lab-spot-pool-4aeb9d32-ztpr   <none>           <none>
+pod/loadgen-595f685fbd-m9vgn    1/1     Running   0          10m   10.76.1.24   gke-obs-lab-spot-pool-4aeb9d32-ztpr   <none>           <none>
+
+NAME               TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE   SELECTOR
+service/demo-app   ClusterIP   34.118.227.92   <none>        80/TCP    26m   app.kubernetes.io/name=demo-app
+
+NAME                                           REFERENCE             TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/demo-app   Deployment/demo-app   cpu: 16%/70%   2         5         2          26m
+
+NAME                                                    READY   STATUS    RESTARTS   AGE
+alertmanager-kps-kube-prometheus-stack-alertmanager-0   2/2     Running   0          11m
+kps-grafana-5bb7788dd6-rqf8s                            3/3     Running   0          14m
+kps-kube-prometheus-stack-operator-59f9d669f-czxrn      1/1     Running   0          11m
+kps-kube-state-metrics-97dbbcbb9-s5664                  1/1     Running   0          14m
+loki-0                                                  2/2     Running   0          10m
+prometheus-kps-kube-prometheus-stack-prometheus-0       2/2     Running   0          10m
+promtail-j5xq2                                          1/1     Running   0          10m
+promtail-wn6nw                                          1/1     Running   0          13m
+tempo-0                                                 1/1     Running   0          13m
