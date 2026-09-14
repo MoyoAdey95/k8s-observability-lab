@@ -1,0 +1,4 @@
+project_id = "your-project-id"
+
+# region, zone, cluster_name, node_count, machine_type and disk_size_gb
+# all have workable defaults. Override here if needed.
