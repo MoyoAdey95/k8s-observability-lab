@@ -180,7 +180,9 @@ comes up with the same panels and the same three alerts every time.
 
 ## Cost
 
-All iteration is local and free. The GKE phase uses a zonal cluster
-(management fee inside the GKE free-tier credit) with two e2-medium
-spot nodes, which prices in cents per hour. `terraform destroy`
-runs the same day. The project carries a budget alert regardless.
+All iteration is local and free. The GKE phase billed $0.05 in total,
+all of it was Compute Engine for two e2-medium spot nodes running a
+few hours. The cluster management fee came to $0.08 and was covered
+in full by the GKE free-tier credit, while networking was covered the
+same way, so both show as zero. `terraform destroy` runs the same day
+and the project carries a budget alert regardless.
