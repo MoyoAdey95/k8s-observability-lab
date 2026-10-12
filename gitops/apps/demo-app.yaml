@@ -41,3 +41,27 @@ spec:
       # Argo CD makes it now, so a fresh cluster needs nothing applied
       # by hand except the root Application.
       - CreateNamespace=true
+      # Pairs with ignoreDifferences below. On its own,
+      # ignoreDifferences only stops the Application reporting
+      # OutOfSync: the next sync still applies the manifest as written,
+      # replicas included, and still overwrites the autoscaler. This
+      # option is what makes the sync leave the ignored field alone.
+      - RespectIgnoreDifferences=true
+
+  # The Deployment in git says replicas: 2 and the HPA scales between 2
+  # and 5. Under `kubectl apply` that was harmless, because nothing went
+  # back and reasserted the manifest. Under selfHeal it is a fight: the
+  # HPA scales to 3, Argo CD sees a cluster that does not match git, and
+  # scales it back to 2.
+  #
+  # The alternative is deleting replicas from k8s/base/deployment.yaml
+  # and letting the HPA own the number outright, which is the usual
+  # advice. It is not taken here because the local overlay runs on kind
+  # with no metrics-server, so there is no HPA there and the deployment
+  # would come up with the Kubernetes default of one pod.
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      name: demo-app
+      jsonPointers:
+        - /spec/replicas
