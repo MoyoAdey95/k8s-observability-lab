@@ -38,11 +38,17 @@ spec:
             description: More than 5% of requests over the last 5 minutes returned a 5xx.
 
         - alert: DemoAppPodRestarting
+          # Threshold was > 3 until the local evidence run showed
+          # increase() reporting 3.15 for four real restarts, because it
+          # measures the delta inside the window rather than counting
+          # events. docs/evidence/local/README.md has the graph. Four
+          # restarts evaluating to 3.15 clears > 3 by a margin thin
+          # enough to be luck, so the threshold moved down to > 2.
           expr: >
-            increase(kube_pod_container_status_restarts_total{namespace="app", container="demo-app"}[15m]) > 3
+            increase(kube_pod_container_status_restarts_total{namespace="app", container="demo-app"}[15m]) > 2
           for: 0m
           labels:
             severity: warning
           annotations:
             summary: demo-app pod restarting repeatedly
-            description: A demo-app container restarted more than 3 times in 15 minutes.
+            description: A demo-app container restarted more than twice in 15 minutes.
