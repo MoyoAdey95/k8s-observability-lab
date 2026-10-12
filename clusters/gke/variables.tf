@@ -27,9 +27,9 @@ variable "node_count" {
 }
 
 variable "machine_type" {
-  description = "Node size. Chosen from the workload rather than from the price list. The observability stack requests roughly 2.5Gi across Prometheus, Grafana, Loki, Tempo and promtail, and an e2-small leaves about 1.4Gi allocatable once GKE's own system pods are accounted for. Two of those would not schedule the stack. e2-medium gives 4Gi each, which fits with room to spare."
+  description = "Node size. Chosen from the workload rather than from the price list. The observability stack requests roughly 2.5Gi across Prometheus, Grafana, Loki, Tempo and promtail, and an e2-small leaves about 1.4Gi allocatable once GKE's own system pods are accounted for, so e2-medium was the original choice. Running it showed CPU was the binding constraint instead, with both nodes near 90% of allocatable CPU requests and nothing left for the HPA. Argo CD then adds a controller, repo-server, Redis and an API server on top of that. e2-standard-2 gives 2 vCPU and 8Gi per node, which leaves the scheduler somewhere to put them."
   type        = string
-  default     = "e2-medium"
+  default     = "e2-standard-2"
 }
 
 variable "disk_size_gb" {

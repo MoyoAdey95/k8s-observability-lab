@@ -71,6 +71,11 @@ Production sizes for the stack plus headroom, which puts this at
 e2-standard-2 or larger, and usually splits monitoring onto its own
 node pool so a busy workload cannot starve the thing watching it.
 
+Added later: the GitOps extension puts Argo CD on the same cluster, and
+its controller, repo-server, Redis and API server do not fit beside the
+stack on e2-medium. The node pool moved to e2-standard-2 for that
+reason, so this delta is no longer hypothetical.
+
 ## Sampling and cost
 
 Every trace is kept here. At production traffic that gets expensive
