@@ -134,3 +134,37 @@ version that goes end of life and a channel that moves on its own
 schedule, and that trade is a decision rather than an oversight. It is
 noted in [production-deltas.md](production-deltas.md) with the rest of
 the things a real environment would do differently.
+
+## The teardown rule was about the wrong object
+
+The original lab learned that destroying a GKE cluster
+leaves the persistent disks behind its PVCs billing away, and wrote
+down a rule to delete the PVCs first. Going into this teardown I assumed
+that rule held and would need adapting, because Argo CD owns the
+StatefulSet and would recreate a PVC deleted underneath it.
+
+What happened was that `kubectl -n argocd delete app root` took
+everything with it. The PVC was already gone before the delete command
+was run, the namespace was still Active so nothing had been removed
+wholesale, and `gcloud compute disks list` showed only the two node
+boot disks.
+
+The Loki chart explains it. `singleBinary.persistence` defaults to
+`enableStatefulSetAutoDeletePVC: true` with `whenDeleted: Delete`, so
+the StatefulSet carries a retention policy that deletes its own PVC.
+Nothing in this repository's values touches that, and the policy had
+been there all along.
+
+Which means the original lab's disk was never orphaned by a missing
+step. It was orphaned because `terraform destroy` removes the control
+plane, and a retention policy only fires when a controller processes a
+StatefulSet deletion. There was no controller left to do it. Deleting
+PVCs by hand worked as a remedy, but it was treating the symptom. The
+actual requirement is that something delete the workloads while the
+cluster is alive.
+
+Deleting the root Application does that for everything in one command,
+which is a better rule than a list of objects to remember. It is also
+the one place where auto-sync has to be reckoned with in the right
+order, because deletion finalizers need Argo CD running to be
+processed. Argo CD has to outlive everything it manages and die last.

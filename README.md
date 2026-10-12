@@ -189,6 +189,54 @@ Do not run `observability/install.sh` on a GitOps cluster. Argo CD
 installs the stack from nothing, and letting Helm create the releases
 first produces ownership conflicts that are tedious to unpick.
 
+### Teardown, GitOps version
+
+Delete the root Application first, and do it while Argo CD is still
+running.
+
+```bash
+kubectl -n argocd delete app root
+```
+
+Every Application carries a deletion finalizer, so that one command
+removes the six children and everything they manage. The command
+blocks for a minute or two while the cascade runs. Finalizers need
+Argo CD alive to be processed, so destroying the cluster with
+Applications still present leaves deletes that never complete and
+objects that have to be unstuck by hand.
+
+Then confirm the cluster is empty and destroy it.
+
+```bash
+kubectl -n argocd get applications
+kubectl -n monitoring get pvc
+```
+
+```bash
+cd clusters/gke
+terraform destroy
+```
+
+```bash
+gcloud compute disks list
+```
+
+The PVC check is there to be read rather than acted on. In the
+original flow, deleting PVCs by hand was a required step, because a
+GKE cluster can be destroyed with persistent disks still attached to
+nothing, and they keep billing afterwards. Deleting the root
+Application turns out to cover it. The Loki chart sets
+`enableStatefulSetAutoDeletePVC` on its single binary StatefulSet, so
+removing the StatefulSet removes the PVC and the CSI driver releases
+the disk.
+
+The rule was never really about PVCs. Something has to delete the
+StatefulSet while the cluster is still alive, because
+`terraform destroy` takes the control plane away and no controller
+ever processes the deletion. Deleting PVCs by hand was one way to
+force that. The root Application is a better one, and it covers every
+workload rather than the ones you remembered.
+
 [gitops/README.md](gitops/README.md) covers why Argo CD is installed
 with Helm rather than Terraform, how the multi-source Applications
 keep a single copy of each values file, and what the sync waves are
