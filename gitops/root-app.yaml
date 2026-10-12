@@ -1,0 +1,42 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+  finalizers:
+    # Without this, deleting the root Application leaves every child
+    # Application behind and Argo CD stops watching them. With it, the
+    # delete cascades, which is what you want when tearing the cluster
+    # down in the right order.
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/MoyoAdey95/k8s-observability-lab.git
+    targetRevision: main
+    # This file sits in gitops/ rather than gitops/apps/ on purpose. An
+    # Application whose source directory contains itself manages its own
+    # manifest, and the failure modes when you then edit it are not
+    # worth the tidiness.
+    path: gitops/apps
+    directory:
+      # apps/ is flat. Stating this rather than relying on the default
+      # means adding a subdirectory later is a deliberate change here
+      # rather than a surprise.
+      recurse: false
+  destination:
+    server: https://kubernetes.default.svc
+    # Applications are Argo CD's own resources, so they go in its
+    # namespace, not the namespace of the workloads they describe.
+    namespace: argocd
+  syncPolicy:
+    automated:
+      # prune is the sharp edge of this pattern. Deleting loki.yaml from
+      # Git deletes the Loki Application, and because that Application
+      # carries the same finalizer, its StatefulSet and PVC go with it.
+      # That is the intended behaviour. It is also why the apps/
+      # directory is not somewhere to move files around casually.
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false

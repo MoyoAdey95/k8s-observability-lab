@@ -76,3 +76,24 @@ have changed the chart under an unchanged values file, with nothing
 in the repo to show it had happened. Pinning turns a chart upgrade
 into a commit somebody has to make, and the version is now written
 down whether or not anyone goes looking for it.
+
+## The root Application
+
+`root-app.yaml` is an Application whose source is the `gitops/apps`
+directory, so the thing it syncs is six more Applications. That is the
+whole app-of-apps pattern. One manifest goes in by hand and everything
+else is reachable from Git without another `kubectl apply`.
+
+Ordering is the part that needs stating. `observability-config.yaml`
+carries `argocd.argoproj.io/sync-wave: "1"` and the rest are wave 0 by
+default. Argo CD waits for every wave 0 resource to go healthy before
+it starts wave 1, and an Application counts as healthy once its own
+sync has finished. So the ServiceMonitor and the PrometheusRule are
+not applied until the kube-prometheus-stack Application has installed
+the CRDs they need, and the demo-app Application has created the `app`
+namespace they reference.
+
+Without the wave, that sync fails on the first run and succeeds on the
+retry, which works but logs an error nobody should have to learn to
+ignore.
+
