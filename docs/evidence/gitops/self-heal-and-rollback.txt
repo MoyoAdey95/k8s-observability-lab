@@ -1,0 +1,114 @@
+Three sequences on the GKE cluster, 12 October 2026. Argo CD on
+chart 10.10.3, auto-sync with prune and selfHeal on throughout.
+
+
+1. A FIELD ARGO CD IS TOLD TO IGNORE
+------------------------------------
+
+The demo-app Application ignores /spec/replicas, because the manifest
+says 2 and the HPA scales between 2 and 5.
+
+$ kubectl -n app scale deploy demo-app --replicas=4
+deployment.apps/demo-app scaled
+
+$ kubectl -n app get deploy demo-app
+NAME       READY   UP-TO-DATE   AVAILABLE   AGE
+demo-app   2/4     2            2           62m
+
+$ kubectl -n argocd get app demo-app
+NAME       SYNC STATUS   HEALTH STATUS
+demo-app   Synced        Progressing
+
+Synced, with four replicas running against a manifest that says two.
+Without ignoreDifferences that reads OutOfSync.
+
+Seven minutes later the deployment was back to 2, and the reason was
+not Argo CD:
+
+$ kubectl -n app describe hpa demo-app | tail
+  Normal  SuccessfulRescale  7m32s  horizontal-pod-autoscaler  New size: 2; reason: cpu resource utilization (percentage of request) below target
+
+The HPA scaled it down 55 seconds after the manual scale-up, because
+the app has no load and minReplicas is 2. So this sequence proves that
+Argo CD stopped reporting the drift. It does not prove what a sync
+would have done to the field, because the autoscaler got there first
+and no test design that leaves both controllers running can separate
+them. RespectIgnoreDifferences is set on the reasoning in the Argo CD
+documentation rather than on anything measured here.
+
+
+2. SELF-HEAL ON A FIELD NOTHING ELSE OWNS
+-----------------------------------------
+
+$ kubectl -n app get deploy demo-app -o jsonpath='{.spec.template.spec.containers[0].env}'
+[{"name":"OTEL_EXPORTER_OTLP_ENDPOINT","value":"http://tempo.monitoring.svc:4318"},{"name":"OTEL_SERVICE_NAME","value":"demo-app"}]
+
+$ kubectl -n app set env deploy/demo-app OTEL_SERVICE_NAME=tampered
+deployment.apps/demo-app env updated
+
+$ kubectl -n app get deploy demo-app -o jsonpath='{.spec.template.spec.containers[0].env}'
+[{"name":"OTEL_EXPORTER_OTLP_ENDPOINT","value":"http://tempo.monitoring.svc:4318"},{"name":"OTEL_SERVICE_NAME","value":"tampered"}]
+
+Nobody told Argo CD. A few minutes later:
+
+$ kubectl -n app get deploy demo-app -o jsonpath='{.spec.template.spec.containers[0].env}'
+[{"name":"OTEL_EXPORTER_OTLP_ENDPOINT","value":"http://tempo.monitoring.svc:4318"},{"name":"OTEL_SERVICE_NAME","value":"demo-app"}]
+
+The event log says how fast, and it is the interesting part:
+
+$ kubectl -n app get events --sort-by=.lastTimestamp | tail
+3m      Normal  ScalingReplicaSet  deployment/demo-app             Scaled up replica set demo-app-5765567cc4 from 0 to 1
+2m58s   Normal  ScalingReplicaSet  deployment/demo-app             Scaled down replica set demo-app-5765567cc4 from 1 to 0
+
+Two seconds. The tampered ReplicaSet never finished rolling out. That
+is a different mechanism from the commit sync in
+sync-from-commit.txt, which took the full three minutes: Argo CD polls
+Git on a timer but watches cluster resources, so drift inside the
+cluster arrives as an event rather than waiting for the next poll.
+
+$ kubectl -n argocd get app demo-app \
+    -o jsonpath='{.status.operationState.phase}{"\n"}{.status.operationState.finishedAt}{"\n"}{.status.operationState.operation.initiatedBy}'
+Succeeded
+2026-10-12T16:20:07Z
+{"automated":true}
+
+initiatedBy carries no username. No human asked for that sync.
+
+
+3. ROLLBACK, AND THEN FIX FORWARD
+---------------------------------
+
+`argocd app rollback` is not used here. It refuses to run while
+automated sync is enabled, and switching auto-sync off to use it means
+the cluster is briefly no longer following Git, which is the one
+property the whole setup exists to provide. Reverting the commit is
+the rollback.
+
+$ git revert --no-edit fd36184
+[main a0536fb] Revert "lower the restart alert threshold to survive increase() extrapolation"
+ 1 file changed, 2 insertions(+), 8 deletions(-)
+
+Three minutes later, with no kubectl apply:
+
+$ kubectl -n app get prometheusrule demo-app-rules -o jsonpath='{.spec.groups[0].rules[2].expr}'
+increase(kube_pod_container_status_restarts_total{namespace="app", container="demo-app"}[15m]) > 3
+
+$ kubectl -n argocd get app observability-config -o jsonpath='{.status.sync.revision}'
+a0536fb667385136562b4d045b2ffe2333ec3cb7
+
+The threshold is back where it was before the change. Then forward
+again, because the lower threshold is the one the evidence supports:
+
+$ git revert --no-edit a0536fb
+[main 606a379] Reapply "lower the restart alert threshold to survive increase() extrapolation"
+ 1 file changed, 8 insertions(+), 2 deletions(-)
+
+$ kubectl -n app get prometheusrule demo-app-rules -o jsonpath='{.spec.groups[0].rules[2].expr}'
+increase(kube_pod_container_status_restarts_total{namespace="app", container="demo-app"}[15m]) > 2
+
+$ kubectl -n argocd get app observability-config -o jsonpath='{.status.sync.revision}'
+606a379524af6d7e5dc7ecdb60b0594a1dfb741f
+
+Three commits in the history: the change, the rollback, the reapply.
+Anyone can read what happened and when, which a pair of kubectl
+commands would not have left behind.
