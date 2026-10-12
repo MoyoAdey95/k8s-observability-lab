@@ -1,0 +1,24 @@
+# Argo CD on a two node lab cluster that is already running the
+# observability stack. Three subcharts are switched off because nothing
+# here uses them and each one is a pod competing for the same nodes.
+#
+#   dex            single sign-on, and there is one user
+#   applicationSet generates Applications from templates, and the
+#                  Applications in this repo are written by hand
+#   notifications  pushes sync events to chat or email, and there is
+#                  nobody to notify
+dex:
+  enabled: false
+applicationSet:
+  enabled: false
+notifications:
+  enabled: false
+
+configs:
+  params:
+    # Production terminates TLS at an ingress or load balancer in front
+    # of Argo CD. There is no ingress here, access is a port-forward on
+    # the loopback interface, and insecure mode avoids a self-signed
+    # certificate warning on every visit. Lab-only, and listed as such
+    # in docs/gitops.md.
+    server.insecure: true
