@@ -1,0 +1,43 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: demo-app
+  namespace: argocd
+  # Without this finalizer, deleting the Application leaves its
+  # Deployment, Service and HPA running in the cluster with nothing
+  # managing them. With it, Argo CD removes them first.
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/MoyoAdey95/k8s-observability-lab.git
+    # Tracking a branch means every push to main is a deployment. That
+    # is the point here and it is also the thing you would not do in
+    # production, where an environment tracks a tag or a digest and
+    # promotion is a deliberate act. Noted in docs/production-deltas.md.
+    targetRevision: main
+    # Argo CD runs kustomize itself when it finds a kustomization.yaml,
+    # so this is the same overlay that `kubectl apply -k` used before.
+    path: k8s/overlays/gke
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: app
+
+  syncPolicy:
+    automated:
+      # Delete a manifest from git and the object goes with it. Off by
+      # default because it will happily delete things if you point an
+      # Application at the wrong path.
+      prune: true
+      # Revert anything changed in the cluster that does not match git.
+      # This is what commit 8 demonstrates, and it is also why
+      # `argocd app rollback` refuses to run while it is on.
+      selfHeal: true
+    syncOptions:
+      # The app namespace used to be created by the bootstrap script.
+      # Argo CD makes it now, so a fresh cluster needs nothing applied
+      # by hand except the root Application.
+      - CreateNamespace=true

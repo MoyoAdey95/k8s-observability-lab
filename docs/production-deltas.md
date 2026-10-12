@@ -83,3 +83,16 @@ fast, so head or tail sampling gets configured in the SDK or a
 collector, and the sampling decision becomes a real engineering
 choice. The metrics/logs sides have the same conversation, longer
 scrape intervals for expensive targets, and retention tiers for logs.
+
+## GitOps
+
+The Applications in `gitops/` track the `main` branch, so every push is
+a deployment. That is the point in a lab, where the whole exercise is
+watching a commit turn into a running change, and it is the first thing
+you would change for production.
+
+A real environment pins to a tag or an image digest and makes promotion
+a deliberate act, usually a separate directory or branch per
+environment with a pull request between them. Tracking `main`
+everywhere means a change lands in production the moment it merges,
+with no gate and nowhere to stop it.
