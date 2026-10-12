@@ -67,3 +67,25 @@ means the cluster stops following Git, which gives up the property the
 whole setup is for. The history ends up with three commits, the change,
 the revert and the reapply, and the cluster followed each one without
 anybody applying anything.
+
+**cluster-state.txt**
+
+The counterpart to `docs/evidence/gke/cluster-state.txt` from the
+original lab, and it answers the question that one could not.
+
+`helm list -A` returns a single release, Argo CD itself. The four
+charts behind the observability stack are absent, because Argo CD
+renders charts with `helm template` and applies the output rather than
+running `helm install`. No release, no Helm history, nothing in the
+cluster that names a chart version.
+
+That is worth dwelling on because the fix proposed for the original
+lab's gap was to capture `helm list -A` next time. On this cluster that
+capture holds none of the information it was meant to preserve. The
+versions are in `gitops/apps/*.yaml` on dated commits instead, which
+outlives the cluster rather than disappearing with it, but it is not
+where the obvious command looks.
+
+The node capture also records GKE moving from 1.35.7 to 1.36.4 between
+the two runs, which nothing in the repository pinned. That one is
+noted as outstanding rather than solved.

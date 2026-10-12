@@ -1,0 +1,77 @@
+What was running, and where the record of it lives.
+GKE, 12 October 2026, about two and a half hours after the rebuild.
+
+
+HELM RELEASES
+-------------
+
+$ helm list -A
+NAME    NAMESPACE  REVISION  UPDATED                               STATUS    CHART            APP VERSION
+argocd  argocd     1         2026-10-12 15:35:34.881041 +0100 BST  deployed  argo-cd-10.10.3  v3.5.5
+
+One release. Not five.
+
+The observability stack is four Helm charts and none of them appears
+here, because Argo CD does not run `helm install`. It renders the chart
+with `helm template` and applies the manifests, so there is no release
+object, no Helm secret and no Helm history in the cluster for Loki,
+Tempo, promtail or kube-prometheus-stack. Only Argo CD itself was
+installed by Helm, by `gitops/install-argocd.sh`, which is why it is
+the only row.
+
+This matters for a reason that came up while building the extension.
+The original lab could not say which Loki chart it had run, and the
+obvious fix was to capture `helm list -A` next time. On a GitOps
+cluster that capture is empty of exactly the information wanted. The
+record has to come from Git.
+
+It also explains why `releaseName: kps` is pinned in
+gitops/apps/kube-prometheus-stack.yaml. Argo CD passes that name to
+`helm template`, and the rendered resource names depend on it, so
+changing it renames every object the dashboards and the port-forward
+instructions refer to.
+
+
+THE APPLICATIONS, WHICH ARE WHERE THE VERSIONS ARE
+--------------------------------------------------
+
+$ kubectl -n argocd get applications -o custom-columns=...
+NAME                    CHART                   VERSION       PATH               SYNC     HEALTH
+demo-app                <none>                  <none>        k8s/overlays/gke   Synced   Healthy
+kube-prometheus-stack   kube-prometheus-stack   92.3.0,main   <none>             Synced   Healthy
+loki                    loki                    7.3.0,main    <none>             Synced   Healthy
+observability-config    <none>                  <none>        observability      Synced   Healthy
+promtail                promtail                6.17.1,main   <none>             Synced   Healthy
+root                    <none>                  <none>        gitops/apps        Synced   Healthy
+tempo                   tempo                   1.24.4,main   <none>             Synced   Healthy
+
+The VERSION column holds two values per chart Application because each
+has two sources: the chart version, and `main` for the git source the
+values come from. The three with no chart are git-only, and their PATH
+is what they track.
+
+Every version in that column is in the repository, in
+gitops/apps/*.yaml, on a commit with a date and an author. That is the
+answer to "what was running", and unlike cluster state it survives the
+cluster being deleted.
+
+
+NODES
+-----
+
+$ kubectl get nodes -o wide
+NAME                                  STATUS  ROLES   AGE    VERSION               INTERNAL-IP  EXTERNAL-IP     CONTAINER-RUNTIME
+gke-obs-lab-spot-pool-c4f31b51-cgk7   Ready   <none>  143m   v1.36.4-gke.1391002   10.132.0.10  34.53.247.205   containerd://2.2.7
+gke-obs-lab-spot-pool-c4f31b51-r2j0   Ready   <none>  143m   v1.36.4-gke.1391002   10.132.0.11  34.77.17.82     containerd://2.2.7
+
+Two e2-standard-2 spot nodes, up for the whole run with no reclaim,
+which is luck rather than a guarantee. The original lab lost a node
+mid-session and the capture in docs/evidence/gke/cluster-state.txt
+shows it.
+
+GKE has also moved from 1.35.7 to 1.36.4 since September. Nothing in
+this repository pinned that, because the cluster is created with
+Terraform and `clusters/gke` takes the channel default. A Kubernetes
+minor version arriving without a commit is the same class of problem
+as an unpinned chart, and it is the one still outstanding. It is in
+docs/production-deltas.md rather than fixed here.
