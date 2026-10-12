@@ -50,3 +50,29 @@ the two approaches can be compared. Running it first and letting Argo
 CD adopt the releases afterwards produces ownership conflicts that are
 tedious to unpick. On a GitOps cluster, Argo CD installs the stack from
 nothing.
+
+## How the Helm Applications are put together
+
+Each of the four charts is an Application with two sources. The chart
+comes from its upstream Helm repository and the values come from this
+repo, joined by `ref: values` on the git source and `$values/` in the
+value file path.
+
+The alternative is copying the values inline into each Application,
+which would fork them from the files `install.sh` reads and quietly
+end the claim that kind and GKE run identical configuration. Two
+sources keeps one copy of every values file.
+
+`targetRevision` on a chart source is the chart version, and Argo CD
+requires it. `install.sh` has no equivalent, so it installs whatever
+is newest on the day it runs and does not record what that was.
+When the GitOps work started I could not say from this repo which
+Loki chart the original lab had used. The Helm index answers it after
+the fact. 7.3.0 was published on 10 August 2026 and nothing newer has
+shipped since, so the September run and this pin are the same chart.
+
+That was luck rather than design. A release landing in between would
+have changed the chart under an unchanged values file, with nothing
+in the repo to show it had happened. Pinning turns a chart upgrade
+into a commit somebody has to make, and the version is now written
+down whether or not anyone goes looking for it.

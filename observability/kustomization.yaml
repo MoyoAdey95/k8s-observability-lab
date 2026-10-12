@@ -1,0 +1,15 @@
+# Groups the three pieces of the stack that are plain manifests rather
+# than Helm releases, so a single Argo CD Application covers them.
+#
+# This sits at the root of observability/ rather than in a directory of
+# its own because kustomize refuses to read files above its own
+# directory, and these three live in three different subdirectories.
+#
+# The ServiceMonitor and the alert rules carry their own namespace of
+# app, the dashboard kustomization sets monitoring on its own output.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - kube-prometheus-stack/servicemonitor.yaml
+  - alerts/demo-app-rules.yaml
+  - dashboards

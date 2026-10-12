@@ -1,0 +1,36 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: observability-config
+  namespace: argocd
+  annotations:
+    # Wave 1, so this syncs after everything on wave 0. It needs two
+    # things that do not exist yet at the start: the ServiceMonitor and
+    # PrometheusRule CRDs, which arrive with kube-prometheus-stack, and
+    # the app namespace, which the demo-app Application creates. Argo CD
+    # would retry its way there eventually, but a wave makes the order
+    # deliberate rather than eventual.
+    argocd.argoproj.io/sync-wave: "1"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  # The parts of the stack that are plain manifests rather than Helm
+  # releases: the ServiceMonitor that tells Prometheus to scrape the
+  # app, the three alert rules, and the dashboard ConfigMap.
+  source:
+    repoURL: https://github.com/MoyoAdey95/k8s-observability-lab.git
+    targetRevision: main
+    path: observability
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

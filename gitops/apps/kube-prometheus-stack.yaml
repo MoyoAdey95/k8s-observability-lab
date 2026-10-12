@@ -1,0 +1,42 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kube-prometheus-stack
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  # releaseName is kps and has to stay that way. Argo CD defaults it
+  # to the Application name, which would rename every resource the
+  # chart creates, breaking the kps-grafana port-forward in the
+  # README and the sidecar labels the dashboard relies on.
+  sources:
+    - repoURL: https://prometheus-community.github.io/helm-charts
+      chart: kube-prometheus-stack
+      targetRevision: 92.3.0
+      helm:
+        releaseName: kps
+        valueFiles:
+          - $values/observability/kube-prometheus-stack/values.yaml
+    - repoURL: https://github.com/MoyoAdey95/k8s-observability-lab.git
+      targetRevision: main
+      ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # The Prometheus operator CRDs are large enough that client-side
+      # apply cannot fit last-applied-configuration into an annotation,
+      # which caps at 262144 bytes, and the sync fails with Too long on
+      # metadata.annotations. Server-side apply diffs in the API server
+      # instead, so the limit does not apply.
+      - ServerSideApply=true
