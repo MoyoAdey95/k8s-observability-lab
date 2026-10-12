@@ -1,0 +1,44 @@
+Argo CD picking up a commit without anyone applying it.
+Captured on the GKE cluster, 12 October 2026.
+
+
+BEFORE THE COMMIT
+-----------------
+
+$ kubectl -n app get prometheusrule demo-app-rules \
+    -o jsonpath='{.spec.groups[0].rules[2].expr}'
+increase(kube_pod_container_status_restarts_total{namespace="app", container="demo-app"}[15m]) > 3
+
+$ kubectl -n argocd get app observability-config \
+    -o jsonpath='{.status.sync.revision}'
+672338c323265edfa16531d4003211730d4b8cb3
+
+
+THE COMMIT
+----------
+
+$ git commit -m "lower the restart alert threshold to survive increase() extrapolation"
+[main fd36184] lower the restart alert threshold to survive increase() extrapolation
+ 1 file changed, 8 insertions(+), 2 deletions(-)
+
+$ git push
+   0c87255..fd36184  main -> main
+
+$ git rev-parse --short HEAD
+fd36184
+
+
+THREE MINUTES LATER, NO KUBECTL APPLY IN BETWEEN
+------------------------------------------------
+
+$ kubectl -n argocd get app observability-config \
+    -o jsonpath='{.status.sync.revision}'
+fd36184506be2db28de52023f51b315997d48260
+
+$ kubectl -n app get prometheusrule demo-app-rules \
+    -o jsonpath='{.spec.groups[0].rules[2].expr}'
+increase(kube_pod_container_status_restarts_total{namespace="app", container="demo-app"}[15m]) > 2
+
+$ kubectl -n argocd get app observability-config
+NAME                   SYNC STATUS   HEALTH STATUS
+observability-config   Synced        Healthy
