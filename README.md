@@ -164,6 +164,39 @@ gcloud compute disks list
 That should return nothing. Run all of this the same day you created
 the cluster.
 
+## Run it with GitOps instead
+
+The section above is the original flow, where someone runs
+`kubectl apply -k` and `observability/install.sh`. The `gitops/`
+directory is the same lab with Argo CD in front of it, so the cluster
+follows this repository rather than following whoever last ran a
+command.
+
+Build the cluster and the image as above, then install Argo CD and
+apply one manifest.
+
+```bash
+./gitops/install-argocd.sh
+kubectl apply -f gitops/root-app.yaml
+```
+
+That manifest is a root Application pointing at `gitops/apps`, which
+holds six more. The demo app, the four observability charts, and the
+ServiceMonitor and alert rules. Nothing else is applied by hand. The
+chart versions are pinned in those files.
+
+Do not run `observability/install.sh` on a GitOps cluster. Argo CD
+installs the stack from nothing, and letting Helm create the releases
+first produces ownership conflicts that are tedious to unpick.
+
+[gitops/README.md](gitops/README.md) covers why Argo CD is installed
+with Helm rather than Terraform, how the multi-source Applications
+keep a single copy of each values file, and what the sync waves are
+for. [docs/gitops.md](docs/gitops.md) is what running it taught,
+including a subchart that stayed enabled because Helm accepts keys
+that do not exist, and why `helm list` cannot tell you what a GitOps
+cluster is running.
+
 ## What's in here
 
 The app ([app/](app/)) exposes a request counter and latency histogram

@@ -87,12 +87,24 @@ scrape intervals for expensive targets, and retention tiers for logs.
 ## GitOps
 
 The Applications in `gitops/` track the `main` branch, so every push is
-a deployment. That is the point in a lab, where the whole exercise is
+a deployment. That is the point in a lab where the whole exercise is
 watching a commit turn into a running change, and it is the first thing
 you would change for production.
 
 A real environment pins to a tag or an image digest and makes promotion
-a deliberate act, usually a separate directory or branch per
+a conscious act, usually a separate directory or branch per
 environment with a pull request between them. Tracking `main`
 everywhere means a change lands in production the moment it merges,
 with no gate and nowhere to stop it.
+
+Argo CD polls Git every three minutes here. Production points a
+repository webhook at the Argo CD server so a merge syncs in seconds.
+Nothing webhooks a laptop, and the wait makes the mechanism visible
+in `docs/evidence/gitops/sync-from-commit.txt`.
+
+The cluster's Kubernetes version is not pinned. `clusters/gke`
+takes the release channel default, which is how the rebuild came up on
+1.36.4 where the original run was 1.35.7. Pinning means choosing
+between a static version that reaches end of life and a channel that
+moves on Google's schedule rather than on a commit, and it is the
+same problem as an unpinned Helm chart one layer down.
