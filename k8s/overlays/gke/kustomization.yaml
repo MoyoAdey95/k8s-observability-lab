@@ -4,17 +4,19 @@ resources:
   - ../../base
 images:
   # The --platform flag is not optional. This laptop is arm64 and GKE's
-  # e2-medium nodes are amd64, so an image built without it starts and
-  # immediately dies with "exec format error". v1 was built that way.
+  # nodes are amd64, so an image built without it starts and immediately
+  # dies with "exec format error". v1 was built that way.
   #
   #   docker build --platform linux/amd64 \
-  #     -t europe-west1-docker.pkg.dev/moyo-cloud-lab/tf-lab-images/demo-app:v2 app/
-  #   docker push europe-west1-docker.pkg.dev/moyo-cloud-lab/tf-lab-images/demo-app:v2
+  #     -t europe-west1-docker.pkg.dev/moyo-cloud-lab/tf-lab-images/demo-app:v3 app/
+  #   docker push europe-west1-docker.pkg.dev/moyo-cloud-lab/tf-lab-images/demo-app:v3
   #
-  # New tag rather than overwriting v1, so the broken image stays
-  # distinguishable from the working one.
+  # Tags are never reused here. v2 went with the rest of the lab at
+  # teardown, so the GitOps run rebuilt as v3 rather than pushing fresh
+  # bytes under an old name. Reusing a tag is how you end up unable to
+  # say what was actually running.
   - name: demo-app
     newName: europe-west1-docker.pkg.dev/moyo-cloud-lab/tf-lab-images/demo-app
-    newTag: v2
+    newTag: v3
 patches:
   - path: patch-deployment.yaml
