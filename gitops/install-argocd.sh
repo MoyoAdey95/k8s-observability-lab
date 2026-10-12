@@ -8,7 +8,11 @@ cd "$(dirname "$0")"
 helm repo add argo https://argoproj.github.io/argo-helm >/dev/null
 helm repo update >/dev/null
 
+# Pinned for the same reason every chart in gitops/apps is pinned. An
+# unpinned install gives whoever runs this next a different Argo CD from
+# the one the evidence in docs/ was captured against.
 helm upgrade --install argocd argo/argo-cd \
+  --version 10.10.3 \
   --namespace argocd --create-namespace \
   --values values.yaml
 

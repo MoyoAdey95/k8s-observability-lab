@@ -1,15 +1,19 @@
 # Argo CD on a two node lab cluster that is already running the
-# observability stack. Three subcharts are switched off because nothing
+# observability stack. Two subcharts are switched off because nothing
 # here uses them and each one is a pod competing for the same nodes.
 #
 #   dex            single sign-on, and there is one user
-#   applicationSet generates Applications from templates, and the
-#                  Applications in this repo are written by hand
 #   notifications  pushes sync events to chat or email, and there is
 #                  nobody to notify
+#
+# The ApplicationSet controller was in this list as applicationSet.enabled
+# until the first install showed its pod running anyway. Chart 10.10.3 has
+# no such key. ApplicationSet is a core component there and the only lever
+# is applicationSet.replicas. Helm accepted the invented key without a
+# word, because this chart ships no values.schema.json, so there was
+# nothing to validate against. The controller is left running and the
+# cluster has the headroom for it. docs/gitops.md has the rest.
 dex:
-  enabled: false
-applicationSet:
   enabled: false
 notifications:
   enabled: false
