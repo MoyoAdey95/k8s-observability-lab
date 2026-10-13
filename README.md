@@ -261,9 +261,40 @@ comes up with the same panels and the same three alerts every time.
 
 ## Cost
 
-All iteration is local and free. The GKE phase billed $0.05 in total,
-all of it was Compute Engine for two e2-medium spot nodes running a
-few hours. The cluster management fee came to $0.08 and was covered
-in full by the GKE free-tier credit, while networking was covered the
-same way, so both show as zero. `terraform destroy` runs the same day
-and the project carries a budget alert regardless.
+All iteration is local and free. Two GKE runs have been billed.
+
+| | 14 Sep 2026 | 12 Oct 2026 |
+|---|---|---|
+| Nodes | 2 x e2-medium spot | 2 x e2-standard-2 spot |
+| Cluster lifetime | about 1h30 | 2h42 |
+| Spot vCPU | $0.0663 | $0.2225 |
+| Spot RAM | $0.0356 | $0.1195 |
+| Balanced PD capacity | $0.0366 | $0.0633 |
+| External IP on spot VM | $0.0115 | $0.0215 |
+| Everything else | $0.0020 | $0.0028 |
+| **Billed** | **$0.1520** | **$0.4296** |
+| Zonal cluster management fee | $0.2528, fully credited | $0.4523, fully credited |
+
+Both management fees were covered in full by the GKE free tier, which
+allows one zonal cluster. Networking charges, mostly Network
+Intelligence Center and Private Service Connect, were credited the
+same way and show as zero.
+
+The figures above come from the resource-level billing export in
+BigQuery, net of credits. `docs/evidence/gitops/cost.txt` has the
+queries. **An earlier version of this section said $0.05 and a $0.08
+management fee for the September run.** Both were inaccurate, read off the
+billing console on the day before usage had finished posting. The
+export is the source now and the number does not move once a day has
+settled.
+
+The October run cost 2.8 times the September one. Disk and external IP charges
+are per hour and both runs had the same two VMs and the same 110GB of disk, so
+their 1.8x ratio is the difference in cluster lifetime. vCPU and RAM
+rose 3.4x, which leaves about 1.9x per node-hour for e2-standard-2
+over e2-medium. Moving up a node size to make room for Argo CD
+therefore roughly doubled the hourly rate, and running an hour longer
+did the rest.
+
+`terraform destroy` runs the same day either way, and the project
+carries a budget alert regardless.

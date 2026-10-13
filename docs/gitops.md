@@ -168,3 +168,27 @@ which is a better rule than a list of objects to remember. It is also
 the one place where auto-sync has to be reckoned with in the right
 order, because deletion finalizers need Argo CD running to be
 processed. Argo CD has to outlive everything it manages and die last.
+
+## A cost figure read on the day is an estimate
+
+It was previously recorded that the September GKE run billed $0.05, with a $0.08
+cluster management fee. Both numbers were inaccurate. The resource-level
+billing export says $0.1520 billed and $0.2528 credited.
+
+The figures were read off the billing console a few hours after
+`terraform destroy`, when the day's usage had not finished posting.
+
+The correction is not that $0.15 is expensive, but that a repository
+making a cost claim should quote the settled figure, and the way to get
+one is to wait a day and query the export rather than read a dashboard
+while the usage is still landing. `docs/evidence/gitops/cost.txt` has
+the queries and both runs side by side, so the next person can check
+the arithmetic instead of trusting a sentence.
+
+The comparison that export makes possible is worth more than either
+number on its own. Disk and external IP charges are per hour and both
+runs had identical hardware counts, so their ratio isolates cluster
+lifetime. vCPU and RAM carry lifetime and node size together, so
+dividing one out leaves the other. The node size change that made room
+for Argo CD cost about 1.9x per node-hour. That is derived from this
+repository's own billing data rather than from a pricing page.

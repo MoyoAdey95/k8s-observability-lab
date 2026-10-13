@@ -1,0 +1,94 @@
+What the two GKE runs actually cost, from the resource-level billing
+export rather than from the console. Queried on 13 October 2026, a day
+after the second run, which is long enough for a day's usage to settle.
+
+Table: moyo-cloud-lab.billing_export.gcp_billing_export_resource_v1_01614A_44C4CF_9E48D3
+All figures USD. "net" is cost after credits, which is what gets charged.
+
+
+THE QUERY
+---------
+
+bq query --use_legacy_sql=false '
+SELECT
+  DATE(usage_start_time, "Europe/London") AS day,
+  sku.description AS sku,
+  ROUND(SUM(cost), 4) AS cost,
+  ROUND(SUM(cost) + SUM(IFNULL((SELECT SUM(c.amount) FROM UNNEST(credits) c), 0)), 4) AS net
+FROM `moyo-cloud-lab.billing_export.gcp_billing_export_resource_v1_01614A_44C4CF_9E48D3`
+WHERE DATE(usage_start_time, "Europe/London") BETWEEN "<from>" AND "<to>"
+  AND project.id = "moyo-cloud-lab"
+  AND cost > 0
+GROUP BY day, sku
+ORDER BY day, net DESC'
+
+
+14 SEPTEMBER 2026, TWO e2-medium SPOT NODES
+-------------------------------------------
+
+sku                                               cost     net
+Spot Preemptible E2 Instance Core running in EMEA 0.0663   0.0663
+Balanced PD Capacity                              0.0366   0.0366
+Spot Preemptible E2 Instance Ram running in EMEA  0.0356   0.0356
+External IP Charge on a Spot Preemptible VM       0.0115   0.0115
+E2 Instance Core running in EMEA                  0.0011   0.0011
+E2 Instance Ram running in EMEA                   0.0006   0.0006
+three network and storage lines                   0.0003   0.0003
+Zonal Kubernetes Clusters                         0.2528   0.0
+four Network Intelligence Center and PSC lines    0.0514   0.0
+
+Billed: 0.1520
+
+
+12 OCTOBER 2026, TWO e2-standard-2 SPOT NODES, ARGO CD
+------------------------------------------------------
+
+sku                                               cost     net
+Spot Preemptible E2 Instance Core running in EMEA 0.2225   0.2225
+Spot Preemptible E2 Instance Ram running in EMEA  0.1195   0.1195
+Balanced PD Capacity                              0.0633   0.0633
+External IP Charge on a Spot Preemptible VM       0.0215   0.0215
+E2 Instance Core running in EMEA                  0.0016   0.0016
+E2 Instance Ram running in EMEA                   0.0009   0.0009
+three network and storage lines                   0.0003   0.0003
+Zonal Kubernetes Clusters                         0.4523   0.0
+four Network Intelligence Center and PSC lines    0.0773   0.0
+
+Billed: 0.4296
+
+Nothing appeared on 11 or 13 October, so the whole run sits inside one
+billing day.
+
+
+READING THE DIFFERENCE
+----------------------
+
+2.8 times the September run, and the SKU split separates the two
+causes without needing a price list.
+
+Balanced PD capacity and the external IP charge are both per hour, and
+both runs had the same two VMs and the same 110GB of disk: two 50GB
+boot disks and Loki's 10GB. Those two lines rose 1.7x and 1.9x, so
+that is the difference in how long the cluster was up. The October
+cluster ran 2h42, which puts September at roughly an hour and a half.
+
+vCPU and RAM both rose 3.4x. Divide out the runtime and about 1.9x is
+left, which is the per node-hour difference between e2-standard-2 and
+e2-medium. So the node size change that made room for Argo CD roughly
+doubled the hourly rate, and the longer session accounts for the rest.
+
+The non-spot E2 lines at a tenth of a penny are the node pool briefly
+running on-demand instances during creation, before the spot
+allocation took over. Present in both runs.
+
+
+WHY THIS FILE EXISTS
+--------------------
+
+The README used to say the September run billed $0.05 with a $0.08
+management fee. The export says $0.1520 and $0.2528. The old numbers
+were read off the billing console on the day of the run, when usage
+had not finished posting, and were never checked afterwards.
+
+A cost figure quoted the same day is an estimate. This one is the
+invoice.
